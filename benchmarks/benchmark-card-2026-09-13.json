@@ -1,0 +1,42 @@
+{
+  "recorded": "2026-09-13 (file time of the original card, UTC 16:40); hardware not recorded in the card",
+  "product": "pqblocks-scan",
+  "benchmark_type": "ast_discovery_throughput",
+  "sizes_tested": 4,
+  "scaling_magnitude": 100.0,
+  "results": [
+    {
+      "num_files": 5,
+      "total_loc": 330,
+      "duration_seconds": 0.0076,
+      "throughput_loc_per_sec": 43243.2,
+      "assets_discovered": 100
+    },
+    {
+      "num_files": 25,
+      "total_loc": 1650,
+      "duration_seconds": 0.0344,
+      "throughput_loc_per_sec": 47981.3,
+      "assets_discovered": 500
+    },
+    {
+      "num_files": 100,
+      "total_loc": 6600,
+      "duration_seconds": 0.1416,
+      "throughput_loc_per_sec": 46599.8,
+      "assets_discovered": 2000
+    },
+    {
+      "num_files": 500,
+      "total_loc": 33000,
+      "duration_seconds": 0.7481,
+      "throughput_loc_per_sec": 44109.6,
+      "assets_discovered": 10000
+    }
+  ],
+  "summary": {
+    "min_throughput_loc_sec": 43243.2,
+    "max_throughput_loc_sec": 47981.3,
+    "mean_throughput_loc_sec": 45483.5
+  }
+}

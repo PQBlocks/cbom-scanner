@@ -1,0 +1,18 @@
+cff-version: 1.2.0
+message: "If you use this software, please cite it as below."
+title: "pqblocks-scan"
+version: "0.1.0"
+license: Apache-2.0
+repository-code: "https://github.com/PQBlocks/cbom-scanner"
+authors:
+  - name: "The PQBlocks Authors"
+keywords:
+  - cbom
+  - cyclonedx
+  - sarif
+  - post-quantum
+  - pqc
+  - crypto-inventory
+  - cnsa-2.0
+  - scanner
+abstract: "Cryptography inventory scanner: finds classical and post-quantum algorithms in source code or a TLS endpoint and writes a CycloneDX 1.6 CBOM, a SARIF 2.1.0 report and a readiness grade."

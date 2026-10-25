@@ -1,0 +1,46 @@
+[build-system]
+requires = ["setuptools>=77"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "pqblocks-scan"
+version = "0.1.0"
+description = "Cryptography inventory scanner: finds classical and post-quantum algorithms in source code or a TLS endpoint and writes a CycloneDX 1.6 CBOM, a SARIF 2.1.0 report and a readiness grade."
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.11"
+authors = [{name = "The PQBlocks Authors"}]
+keywords = ["cbom", "cyclonedx", "sarif", "post-quantum", "pqc", "crypto-inventory", "cnsa-2.0", "scanner"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Topic :: Security :: Cryptography",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+]
+dependencies = []
+
+[project.optional-dependencies]
+test = ["pytest", "jsonschema", "referencing"]
+
+[project.scripts]
+pqblocks-scan = "pqblocks_scan.cli:main"
+
+[project.urls]
+Homepage = "https://github.com/PQBlocks/cbom-scanner"
+Documentation = "https://github.com/PQBlocks/cbom-scanner#readme"
+Source = "https://github.com/PQBlocks/cbom-scanner"
+Changelog = "https://github.com/PQBlocks/cbom-scanner/blob/main/CHANGELOG.md"
+Issues = "https://github.com/PQBlocks/cbom-scanner/issues"
+Security = "https://github.com/PQBlocks/cbom-scanner/security/policy"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
