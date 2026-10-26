@@ -1,9 +1,9 @@
 # Testing: pqblocks-scan
 
 **Status at release 0.1.0:**
-- 106 of 106 tests pass on Python 3.11, 3.12, 3.13 and 3.14.
+- 130 of 130 tests pass on Python 3.11, 3.12, 3.13 and 3.14.
 - Each run used the built wheel, installed in a fresh virtual environment with dependencies from PyPI.
-- Statement coverage is 94 %.
+- Statement coverage is 96 % (668 statements, 27 missed).
 - No test opens a network connection.
 
 ## How to run
@@ -14,31 +14,31 @@ pytest -q                                   # from a checkout: pip install -e ".
 pytest -q --cov=pqblocks_scan --cov-report=term-missing   # needs pytest-cov
 ```
 
-## Results (measured 2026-10-25 UTC)
+## Results (measured 2026-10-26 UTC)
 
 | Python | Install source | Tests | Examples |
 |---|---|---|---|
-| 3.11 | wheel + PyPI dependencies | 106 passed | 3 / 3 passed |
-| 3.12 | wheel + PyPI dependencies | 106 passed | 3 / 3 passed |
-| 3.13 | wheel + PyPI dependencies | 106 passed | 3 / 3 passed |
-| 3.14 | wheel + PyPI dependencies | 106 passed | 3 / 3 passed |
+| 3.11 | wheel + PyPI dependencies | 130 passed | 3 / 3 passed |
+| 3.12 | wheel + PyPI dependencies | 130 passed | 3 / 3 passed |
+| 3.13 | wheel + PyPI dependencies | 130 passed | 3 / 3 passed |
+| 3.14 | wheel + PyPI dependencies | 130 passed | 3 / 3 passed |
 
-The package has no runtime dependencies. The test extra resolved to pytest 9.1.1.
+The package has no runtime dependencies. The test extra is pytest, jsonschema and referencing; it resolved to pytest 9.1.1, jsonschema 4.26.0 and referencing 0.37.0.
 
 ### Coverage (Python 3.14, from source)
 
 | Module | Statements | Missed | Coverage | Not covered |
 |---|---|---|---|---|
 | `__init__.py` | 0 | 0 | 100 % | |
-| `cbom.py` | 40 | 2 | 95 % | the `block-cipher` and `other` primitive branches |
-| `cli.py` | 78 | 3 | 96 % | the silent `except Exception: pass` in `scan_path`; `__main__` |
-| `deadlines.py` | 29 | 3 | 90 % | the fallback for vulnerable assets with no table entry |
-| `discovery.py` | 175 | 10 | 94 % | the fallback key size, `hashlib.new("sha256")`, keyword key sizes, non-string source, the `SyntaxError` fallback |
+| `cbom.py` | 44 | 1 | 98 % | the `other` primitive branch |
+| `cli.py` | 99 | 5 | 95 % | the error handlers when the path is a single file; `__main__` |
+| `deadlines.py` | 29 | 0 | 100 % | |
+| `discovery.py` | 178 | 8 | 96 % | the fallback key size, non-string source, `hashlib.new("sha256")`, keyword key sizes (`bits=` / `key_size=`) |
 | `models.py` | 108 | 3 | 97 % | the protocol asset type, the default PQC level, SLH-DSA parameter ids |
 | `sarif.py` | 28 | 1 | 96 % | skipping non-vulnerable assets |
-| `scorer.py` | 60 | 4 | 93 % | hybrid-signature pairing, NaN rejection, grades B and C |
-| `tls_probe.py` | 122 | 12 | 90 % | the live connector (lines 139-145), SHA-1/MD5 cipher names, X25519 certificates |
-| **Total** | **640** | **38** | **94 %** | |
+| `scorer.py` | 60 | 3 | 95 % | hybrid-signature pairing, NaN rejection, grade C |
+| `tls_probe.py` | 122 | 6 | 95 % | SHA-1/MD5 cipher names, non-dict certificate, X25519 certificates, a handshake that returns no cipher |
+| **Total** | **668** | **27** | **96 %** | |
 
 ## What the tests check
 
@@ -53,6 +53,8 @@ The package has no runtime dependencies. The test extra resolved to pytest 9.1.1
 | `test_golden.py` | 2 | End-to-end on `tests/golden/`: the legacy MD5 + RSA-1024 file grades F (30.5), the ML-KEM-768 + X25519 hybrid file grades A (90.0). |
 | `test_cbom.py` | 1 | CBOM envelope, component names, `assetType`, levels 0 and 3. |
 | `test_sarif.py` | 1 | SARIF version, driver name `pqblocks-scan`, rule `PQC001`, level and location. |
+| `test_cbom_schema.py` | 4 | CBOM validates against the pinned CycloneDX 1.6 schema |
+| `test_review_fixes.py` | 20 | scan errors exit 2, latin-1 fallback, RSA-512, FIPS levels, d4/d5 flags, no certificate read |
 
 ## Output validated against the official schemas (run for this release)
 
@@ -61,9 +63,9 @@ Method: a CBOM and a SARIF log were generated from `tests/golden/gold01_legacy.p
 | Output | Schema | Result |
 |---|---|---|
 | SARIF | OASIS `sarif-schema-2.1.0.json` (errata01) | **0 errors** |
-| CBOM | CycloneDX `bom-1.6.schema.json` (+ `spdx`, `jsf-0.82`) | **28 errors, 4 causes**: `nistQuantumSecurityLevel` is not allowed directly under `cryptoProperties`; `algorithmProperties.name` is not allowed; `executionEnvironment "software-plain"` is not in the enum; `protocolProperties.type "TLS"` is not in the enum (`tls`) |
+| CBOM | CycloneDX bom-1.6.schema.json (+ spdx, jsf-0.82) | **0 errors** (`tests/test_cbom_schema.py`) |
 
-The test suite itself contains **no schema-validation test**. `test_cbom.py` checks selected fields only.
+`tests/test_cbom_schema.py` validates `CBOMGenerator` output for all 23 known algorithms, scanned files and TLS assets against the vendored, sha256-pinned schema.
 
 ## Official vectors
 
@@ -79,7 +81,4 @@ None apply. The package performs no cryptographic operations, so there are no NI
 
 ## What is not covered
 
-- **The fail-open path:** no test checks what happens when `scan_path` silently drops a file (non-UTF-8 input, or an unknown key size such as `RSA.generate(512)`). See the HIGH finding in [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
-- **The live TLS connector** (`_live_connector`): never executed by the tests.
-- **CycloneDX schema conformance:** not tested, and currently failing.
 - **Detection accuracy on real repositories:** precision and recall were not measured.

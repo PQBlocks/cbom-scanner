@@ -3,7 +3,7 @@
 Guidance for AI coding agents using this package.
 
 - **Use it for:** a first-pass inventory of cryptographic algorithms in source code or a TLS cipher-suite name, exported as a CycloneDX 1.6 CBOM or SARIF 2.1.0.
-- **Install:** `pip install pqblocks-scan`. There are no runtime dependencies.
+- **Install:** `pip install git+https://github.com/PQBlocks/cbom-scanner`. There are no runtime dependencies.
 - **Correct imports:**
   - `from pqblocks_scan.discovery import Discovery`
   - `from pqblocks_scan.cbom import CBOMGenerator`
@@ -19,10 +19,9 @@ Guidance for AI coding agents using this package.
 
 ## Pitfalls
 
-- **Do not treat 0 assets as clean.** The CLI silently skips files that raise (non-UTF-8, unknown key size such as `RSA.generate(512)`). If you walk a tree yourself, call `discover_file` and handle `UnicodeDecodeError` and `ValueError` explicitly.
-- **The CBOM fails strict CycloneDX 1.6 schema validation** (four known field issues). Do not promise schema-valid output.
-- **`nistQuantumSecurityLevel` is a heuristic**, wrong for ML-KEM-512 and ML-DSA-44. Do not quote it as the FIPS category.
-- **CLI grades assume CI and a migration policy exist** (d4 = d5 = 100). Use `CARSScorer.evaluate` with real flags for an honest grade.
+- **Do not treat 0 assets as clean.** Exit code 2 means scan errors; 0 assets with exit 0 can still mean unrecognised crypto.
+- **Use `CBOMGenerator`, not `models.CBOMReport`,** for schema-valid CycloneDX 1.6.
+- **CLI d4/d5 come from `--has-ci` / `--has-policy`** and are not verified.
 - **TLS key sizes are guessed** (RSA-2048, ECDSA-P256), and the live probe does not read the certificate.
 
 ## Do not

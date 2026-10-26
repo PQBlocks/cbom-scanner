@@ -9,21 +9,15 @@ A **detector**, not a cryptographic library. It reads source files and, if you a
 
 ## What it does not protect against
 
-**Missed findings (known defect, HIGH).**
-- The CLI's directory walk skips any file that raises an exception, and does not say so. That includes non-UTF-8 files, unreadable files, and Python files where a key size outside the known set appears, e.g. `RSA.generate(512)`.
-- Such files contribute no assets. A tree made only of them reports 0 assets, and `--fail-on` **passes**.
-- Mitigation until it is fixed:
-  - Do not use the CLI as the only gate.
-  - Treat 0 assets on a crypto-using tree as a failure.
-  - Or walk the tree yourself with `Discovery().discover_file` and handle `UnicodeDecodeError` and `ValueError`.
+**Scan errors.** Unreadable files, Python files that do not parse, and a missing path are reported as scan errors, and the CLI exits 2. A tree with no recognised algorithm and no scan error still reports 0 assets and `--fail-on` passes, so treat 0 assets on a crypto-using tree as a failure.
 
 **Narrow coverage.**
 - 23 algorithm names, matched by patterns. Python syntax-tree detection only for the call shapes listed in the README.
 - Dynamic names, binaries, configuration semantics and dependency manifests are not analysed.
 
-**Over-stated levels (MEDIUM).** The CBOM's `nistQuantumSecurityLevel` is a heuristic. It reports level 5 for ML-KEM-512 and ML-DSA-44 (FIPS categories 1 and 2) and for AES-256 / SHA-256.
+**NIST levels.** `nistQuantumSecurityLevel` is written only for ML-KEM and ML-DSA, using the FIPS 203/204 categories, and is omitted for AES, SHA-2 and classical algorithms.
 
-**Lenient CLI grade (MEDIUM).** The CLI always assumes a CI workflow and a migration policy (d4 = d5 = 100), which raises the grade by up to 19.5 points.
+**Declared CLI dimensions.** d4/d5 are 40/30 unless `--has-ci` / `--has-policy` are passed. The flags are trusted, not verified.
 
 **TLS probe.**
 - Reads only the negotiated cipher-suite name. The certificate is not inspected.
@@ -44,7 +38,7 @@ A **detector**, not a cryptographic library. It reads source files and, if you a
 
 ## Input handling
 
-- Files are read whole as UTF-8, with no size limit, and parsed with `ast.parse` when they end in `.py`.
+- Files are read whole as UTF-8, falling back to latin-1, with no size limit, and parsed with `ast.parse` when they end in `.py`.
 - On untrusted trees, cap the input size and run the scanner in a sandbox. Deeply nested Python can exhaust the parser, which is standard-library behaviour.
 - The directory walk does not follow directory symlinks, but it does read symlinked files, which can point outside the tree.
 - Library entry points validate their arguments: `CryptoAsset` rejects non-positive sizes and lines, `probe_endpoint` checks host, port and timeout, `parse_cipher_suite` and `cert_to_asset` check types. Invalid input raises `ValueError` or `TypeError`.
@@ -52,7 +46,7 @@ A **detector**, not a cryptographic library. It reads source files and, if you a
 
 ## Dependencies
 
-There are none at runtime. Tests need `pytest`.
+There are none at runtime. Tests need `pytest`, `jsonschema` and `referencing`.
 
 ## Audit status
 

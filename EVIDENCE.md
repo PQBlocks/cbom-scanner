@@ -29,7 +29,7 @@ This file lists where each part of the scanner comes from, and how the code maps
 8. NIST **SP 800-67 Rev. 2**, *Recommendation for the Triple Data Encryption Algorithm (TDEA) Block Cipher*, November 2017. doi:[10.6028/NIST.SP.800-67r2](https://doi.org/10.6028/NIST.SP.800-67r2)
    - The 3DES deadline text cites it.
 9. NIST **FIPS 140-3**, *Security Requirements for Cryptographic Modules*, 2019. doi:[10.6028/NIST.FIPS.140-3](https://doi.org/10.6028/NIST.FIPS.140-3)
-   - The MD5/DES text and SARIF rule `PQC002` cite it.
+   - The DES text and SARIF rule `PQC002` cite it. The MD5 text cites the FIPS 140-2 sunset (21 September 2026).
 10. IETF **RFC 7465**, *Prohibiting RC4 Cipher Suites*, February 2015. doi:[10.17487/RFC7465](https://doi.org/10.17487/RFC7465)
 11. NSA, *Commercial National Security Algorithm Suite 2.0* (CNSA 2.0) advisory and FAQ.
     - The official PDFs on media.defense.gov returned HTTP 403 to automated fetches, so the deadline years in `deadlines.py` were **not re-checked against the primary document** for this release. Treat them as indicative and confirm against the NSA publication before using them for compliance.
@@ -47,8 +47,8 @@ This file lists where each part of the scanner comes from, and how the code maps
 |---|---|---|
 | Document envelope | CycloneDX 1.6 | `cbom.CBOMGenerator.generate`: `bomFormat`, `specVersion "1.6"`, `serialNumber` (`urn:uuid:` from `uuid4`), `version 1`, `metadata.timestamp`, `metadata.tools` (vendor PQBlocks, name pqblocks-scan), `metadata.component` |
 | Crypto component | CycloneDX 1.6 `cryptographic-asset` | one component per asset, `bom-ref` `<serial>:crypto-<n>`, `evidence.occurrences[{location, line}]` |
-| `cryptoProperties` | CycloneDX 1.6 | `assetType "algorithm"`; `algorithmProperties.primitive` mapped from the name (signature / key-exchange / block-cipher / hash / other); `parameterSetIdentifier` = key size; `protocolProperties.type` for TLS assets. **Departs from the schema in four places**, see [README](README.md#limitations) |
-| NIST security level | FIPS 203/204 categories | heuristic in `asset_to_crypto_properties`: vulnerable → 0, name contains 768 or 65 → 3, otherwise 5. It does not follow the standards for ML-KEM-512 (category 1) or ML-DSA-44 (category 2). |
+| `cryptoProperties` | CycloneDX 1.6 | `assetType "algorithm"`; `algorithmProperties.primitive` mapped from the name (kem / key-agree / signature / block-cipher / hash / other); `parameterSetIdentifier` = key size; `executionEnvironment "software-plain-ram"`; lower-case `protocolProperties.type` for TLS assets. Validates against the CycloneDX 1.6 schema. |
+| NIST security level | FIPS 203/204 categories | table `cbom.NIST_LEVELS`: ML-KEM-512/768/1024 → 1/3/5, ML-DSA-44/65/87 → 2/3/5 (FIPS 203 / FIPS 204); omitted for every other asset. |
 | SARIF log | SARIF 2.1.0 | `sarif.SARIFGenerator.generate`: one run; driver `pqblocks-scan`; rules `PQC001` (warning) and `PQC002` (error, for assets mapped as `prohibited`); one result per quantum-vulnerable asset with `physicalLocation.region.startLine` |
 | Deadlines | CNSA 2.0, SP 800-131A, SP 800-67, RFC 7465, FIPS 140-3 | `deadlines.DeadlineMapper.DEADLINES`: substring match on the upper-cased name. Unmatched vulnerable assets default to `migration` and the asset's year, or 2033. |
 | Quantum vulnerability | IR 8547 (RSA/ECC broken by Shor; symmetric and hash keep strength at larger sizes) | `discovery._quantum_vulnerable_and_deadline`: ML-KEM/ML-DSA, AES-256 and SHA-256/384/512 are not vulnerable; everything else is. `tls_probe._vuln_deadline`: only ML-KEM/ML-DSA prefixes are not vulnerable. |
@@ -59,7 +59,7 @@ This file lists where each part of the scanner comes from, and how the code maps
 ## Independent checks
 
 - The generated SARIF was validated against the official OASIS 2.1.0 schema: 0 errors.
-- The generated CBOM was validated against the official CycloneDX 1.6 schema. It does **not** pass: 28 errors, 4 distinct causes. See [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
+- The CBOM from `CBOMGenerator` was validated against the official CycloneDX 1.6 schema (vendored and sha256-pinned in `tests/schemas/`): 0 errors, checked by `tests/test_cbom_schema.py`.
 - Two golden fixtures (`tests/golden/`) pin end-to-end grades. The legacy file grades F (30.5) and the hybrid file grades A (90.0).
 
 ## Licence and provenance

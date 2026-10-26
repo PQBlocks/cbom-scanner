@@ -16,7 +16,7 @@ CBOM: CycloneDX 1.6 with 2 components
 check passed: True
 ```
 
-On a real tree: `pqblocks-scan path/to/repo --cbom cbom.json`. Then check that the asset count is plausible: files the scanner cannot read are skipped silently (see README, Limitations).
+On a real tree: `pqblocks-scan path/to/repo --cbom cbom.json`. Unreadable or unparsable files are reported as scan errors, and the CLI exits 2.
 
 ## 2. Code-scanning results and a CI gate
 
@@ -33,7 +33,7 @@ SARIF 2.1.0 results: ['PQC002', 'PQC002']
 check passed: True
 ```
 
-`--fail-on D` fails on grade D or F. Because of the fail-open defect, also fail the job when the scan reports 0 assets on a tree you know uses cryptography.
+`--fail-on D` fails on grade D or F. Exit code 2 means some files could not be scanned. Also fail the job when the scan reports 0 assets on a tree you know uses cryptography.
 
 ## 3. Classifying TLS cipher suites offline
 
@@ -55,5 +55,5 @@ Against a live server: `pqblocks-scan --tls-host example.org --json`. Only the n
 ## When to use something else
 
 - **You need a complete, audit-grade inventory.** This scanner recognises 23 algorithm names with narrow patterns. Use it as a first pass next to a full SAST tool or a binary scanner.
-- **A strict consumer must accept the CBOM.** The output does not yet validate against the CycloneDX 1.6 schema.
+- **A strict consumer must accept the CBOM.** `CBOMGenerator` output validates against the CycloneDX 1.6 schema; `models.CBOMReport.to_dict()` output does not.
 - **You need certificate-chain analysis.** The live probe does not read certificates.

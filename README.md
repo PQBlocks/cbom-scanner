@@ -4,10 +4,10 @@ Cryptography inventory scanner for the post-quantum transition. It finds classic
 Use it to get a first inventory of where RSA, ECC, MD5, SHA-1, AES, ML-KEM and ML-DSA appear in a code base, and to gate CI on it.
 It follows CycloneDX 1.6 (`specVersion: "1.6"`), OASIS SARIF 2.1.0, the CNSA 2.0 and NIST IR 8547 transition timelines, and the CARS readiness score (Costa, IACR ePrint 2026/1467).
 
-> **Status: alpha, with known defects.** The pre-release review found one HIGH issue: the CLI silently skips files it cannot read or classify, so a CI gate can pass on code that contains weak cryptography. The CBOM also does not yet validate against the official CycloneDX 1.6 JSON schema. Read [Limitations](#limitations) before relying on it.
+> **Status: alpha.** Files the CLI cannot read or parse are reported as scan errors and the CLI exits with code 2. The CBOM validates against the official CycloneDX 1.6 JSON schema (tests/test_cbom_schema.py). Read [Limitations](#limitations) before relying on it.
 
 ```bash
-pip install pqblocks-scan
+pip install git+https://github.com/PQBlocks/cbom-scanner
 ```
 
 ```python
@@ -34,8 +34,8 @@ pqblocks-scan --tls-host example.org --tls-port 443 --json
 ## Why PQBlocks
 
 - **No runtime dependencies:** standard library only (`ast`, `re`, `ssl`, `socket`, `json`). It runs offline except for `--tls-host`.
-- **Tested:** 106 tests, 94 % statement coverage. No test touches the network.
-- **Honest:** the CBOM schema gaps, the fail-open CLI path and every heuristic are written down below and in [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
+- **Tested:** 130 tests, 96 % statement coverage. No test touches the network.
+- **Honest:** every heuristic and known limitation is written down below and in [VERIFICATION_REPORT.md](VERIFICATION_REPORT.md).
 - **Licence:** Apache-2.0.
 
 ## Usage
@@ -52,41 +52,35 @@ pqblocks-scan --tls-host example.org --tls-port 443 --json
 
 **Grade.** CARS score `S = 0.20·d1 + 0.25·d2 + 0.25·d3 + 0.15·d4 + 0.15·d5`, each dimension in [0, 100]. Grade bands: A ≥ 85, B ≥ 70, C ≥ 55, D ≥ 40, else F. With zero assets every dimension is 0, so the grade is F.
 
-**CI gate.** `--fail-on X` returns exit code 1 when the grade is **at or below** X (`--fail-on D` fails on D and F). When no assets are found it returns 0 and prints `CI GATE PASSED`.
+**CI gate.** `--fail-on X` returns exit code 1 when the grade is **at or below** X. If any file cannot be read or parsed, or the path does not exist, the CLI prints each `Scan error:` and returns exit code 2, with or without `--fail-on`. With no scan errors and no assets it returns 0 and prints `CI GATE PASSED`.
 
 ## API reference
 
 | Call | Returns / raises |
 |---|---|
 | `Discovery().discover_source(source: str, file_path: str) -> DiscoveryResult` | `.assets`, `.asset_count`, `.get_algorithms()`, `.to_dict()`. `TypeError` if `source` is not a string. |
-| `Discovery().discover_file(path: str) -> DiscoveryResult` | Reads the file as UTF-8. Raises `FileNotFoundError`, `UnicodeDecodeError`, and `ValueError("Unknown algorithm …")` for a key size outside the known set (e.g. `RSA.generate(512)`). |
-| `make_asset(algorithm, file_path, line_number, protocol=None, abstraction_isolated=None) -> CryptoAsset` | `ValueError` for an algorithm outside the 23 known names. |
+| `Discovery().discover_file(path: str) -> DiscoveryResult` | Reads the file as UTF-8, falling back to latin-1. Raises `FileNotFoundError`, `SyntaxError` for an unparsable `.py` file, and `ValueError("Unknown algorithm …")` for a non-RSA name outside the known set (e.g. `AES.new(k, key_size=512)`). Any RSA size, e.g. `RSA.generate(512)`, is reported as `RSA-<bits>`. |
+| `make_asset(algorithm, file_path, line_number, protocol=None, abstraction_isolated=None) -> CryptoAsset` | `ValueError` for a name outside the 23 known names; any `RSA-<digits>` is also accepted. |
 | `probe_endpoint(host, port=443, timeout=5.0, connector=None) -> ProbeResult` | `ValueError` on empty host, a port outside 1..65535 or a timeout ≤ 0. Network and certificate-verification errors propagate. |
 | `parse_cipher_suite(name) -> list[(algorithm, key_size)]`, `cipher_to_assets(name, host, port=443)`, `cert_to_asset(cert: dict, host, port=443)` | `TypeError` / `ValueError` on bad input or an unknown name. |
 | `CARSScorer.evaluate(assets, has_ci_workflow=False, has_migration_policy=False) -> GradeResult` | `.score`, `.letter`, `.dimensions` (d1..d5 in [0, 1]). `calculate_score` raises `ValueError` on NaN. |
 | `DeadlineMapper.map_asset(asset) -> DeadlineFinding \| None`, `DeadlineMapper.map_all(assets)` | Findings sorted by deadline year. |
 | `CBOMGenerator.generate(assets, component_name="scanned-application") -> dict`, `CBOMGenerator.to_json(cbom, indent=2)` | CycloneDX 1.6 document. |
 | `SARIFGenerator.generate(assets, deadline_findings) -> dict`, `SARIFGenerator.to_json(doc, indent=2)` | SARIF 2.1.0 log. Rule `PQC001` (quantum-vulnerable, warning) or `PQC002` (prohibited, error). |
-| `cli.main(argv=None) -> int`, `cli.scan_path(path) -> list[CryptoAsset]` | Console script `pqblocks-scan`. |
+| `cli.main(argv=None) -> int` (0 pass, 1 grade gate failed, 2 scan errors), `cli.scan_path(path, errors=None) -> list[CryptoAsset]` (appends `(path, message)` to `errors`) | Console script `pqblocks-scan`. |
 
 `CryptoAsset(asset_id, algorithm, key_size, protocol, file_path, line_number, is_quantum_vulnerable, cnsa2_deadline_year, abstraction_isolated)` rejects `key_size <= 0` and `line_number <= 0`.
 
 ## Limitations
 
-- **The CLI fails open (HIGH).** `scan_path` drops any file that raises, without telling you. That covers non-UTF-8 files, unreadable files, and Python files with a key size outside the known set, such as `RSA.generate(512)`. A repository holding only such files reports 0 assets, and `--fail-on` then **passes**. Until this is fixed, do not use the CLI as the only CI gate. Call `Discovery().discover_file` yourself and handle the exceptions.
-- **The CBOM does not validate against the official CycloneDX 1.6 JSON schema.** Four distinct violations:
-  - `nistQuantumSecurityLevel` is placed directly under `cryptoProperties`; the schema puts it inside `algorithmProperties`.
-  - `algorithmProperties.name` is not a schema field.
-  - `executionEnvironment: "software-plain"` is not an allowed value.
-  - `protocolProperties.type: "TLS"` must be lower-case `tls`.
-
-  Strict consumers may reject the file. SARIF output validates against the OASIS 2.1.0 schema with 0 errors (see [TESTING.md](TESTING.md)).
-- **NIST security levels in the CBOM are a heuristic.** A non-vulnerable asset gets level 3 if its name contains "768" or "65", otherwise 5. So ML-KEM-512 and ML-DSA-44 are reported as level 5, where FIPS 203 and FIPS 204 assign categories 1 and 2. Every quantum-vulnerable asset gets 0.
+- **Scan errors fail the run.** Unreadable files and Python files with syntax errors are listed as `Scan error:` lines and the CLI exits 2. Non-UTF-8 files are decoded as latin-1 and scanned.
+- **Use `CBOMGenerator`.** Its output validates against the official CycloneDX 1.6 schema (`tests/test_cbom_schema.py`). The older `models.CBOMReport.to_dict()` does not: it puts `nistQuantumSecurityLevel`, `cnsa2DeadlineYear` and `abstractionIsolated` directly under `cryptoProperties` and writes the algorithm name as `primitive`.
+- **NIST security levels** are written only for ML-KEM-512/768/1024 (1/3/5) and ML-DSA-44/65/87 (2/3/5), per FIPS 203 and FIPS 204. Other assets have no `nistQuantumSecurityLevel`.
 - **Classification differs between paths.**
   - Source discovery marks AES-128 as quantum-vulnerable and AES-256 / SHA-256/384/512 as not.
   - The TLS path marks every non-PQC primitive as vulnerable, AES-256 included.
 - **The TLS probe guesses key sizes.** Cipher-suite names carry no key size, so RSA is reported as RSA-2048 and ECDSA as ECDSA-P256. The live probe does not read the certificate. Endpoints with certificates that fail verification raise an error and are not scanned.
-- **CLI grades assume CI and policy.** `main()` calls `CARSScorer.evaluate(..., has_ci_workflow=True, has_migration_policy=True)`, so d4 and d5 are always 100 from the CLI. That can add up to 19.5 points. Call `CARSScorer.evaluate` directly for an unbiased grade.
+- **CLI d4/d5 are declared, not detected.** Without `--has-ci` / `--has-policy` the CLI uses d4 = 40 and d5 = 30; with them, 100. The scanner does not check that a CI workflow or a policy exists.
 - **The patterns are narrow.**
   - Only the algorithm names listed above are recognised.
   - Comments and docstrings count as hits.

@@ -10,5 +10,5 @@ All notable changes to this project are documented here. The format follows [Kee
 - CycloneDX 1.6 CBOM export with `cryptoProperties`, and SARIF 2.1.0 export with rules `PQC001` and `PQC002`.
 - CNSA 2.0 / NIST transition deadline mapping.
 - CARS five-dimension readiness score with A–F grade.
-- `pqblocks-scan` command line with `--cbom`, `--sarif`, `--json`, `--fail-on`, `--tls-host` and `--tls-port`.
+- `pqblocks-scan` command line with `--cbom`, `--sarif`, `--json`, `--fail-on`, `--tls-host`, `--tls-port`, `--has-ci` and `--has-policy`; exit code 2 on scan errors.
 - Examples: quickstart inventory, CI gate, offline TLS cipher classification.
