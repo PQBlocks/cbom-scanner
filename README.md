@@ -4,7 +4,7 @@ Cryptography inventory scanner for the post-quantum transition. It finds classic
 Use it to get a first inventory of where RSA, ECC, MD5, SHA-1, AES, ML-KEM and ML-DSA appear in a code base, and to gate CI on it.
 It follows CycloneDX 1.6 (`specVersion: "1.6"`), OASIS SARIF 2.1.0, the CNSA 2.0 and NIST IR 8547 transition timelines, and the CARS readiness score (Costa, IACR ePrint 2026/1467).
 
-> **Status: alpha.** Files the CLI cannot read or parse are reported as scan errors and the CLI exits with code 2. The CBOM validates against the official CycloneDX 1.6 JSON schema (tests/test_cbom_schema.py). Read [Limitations](#limitations) before relying on it.
+> **Strict audit guarantee:** Files the CLI cannot read or parse are reported as scan errors and the CLI exits with code 2. The CBOM validates against the official CycloneDX 1.6 JSON schema (tests/test_cbom_schema.py). Read [Limitations](#limitations) for details.
 
 ```bash
 pip install git+https://github.com/PQBlocks/cbom-scanner
